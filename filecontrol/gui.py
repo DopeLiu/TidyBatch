@@ -158,62 +158,6 @@ SETTINGS_PATH = os.path.join(data_dir(), ".filecontrol_settings.json")
 
 
 # --------------------------------------------------------------------------- #
-# 兜底窗口图标(找不到 assets/icon.ico 时使用)
-# --------------------------------------------------------------------------- #
-def _fallback_icon(widget, size: int = 64):
-    """用代码画一个「蓝色圆角方块 + 白色文件夹」的图标,避免出现 tkinter 默认羽毛图标。"""
-    top, bottom = (0x6F, 0x9D, 0xFF), (0x33, 0x55, 0xB8)
-    image = tk.PhotoImage(master=widget, width=size, height=size)
-
-    def in_rounded(x, y, x0, y0, x1, y1, r):
-        cx = min(max(x, x0 + r), x1 - r)
-        cy = min(max(y, y0 + r), y1 - r)
-        dx, dy = x - cx, y - cy
-        return dx * dx + dy * dy <= r * r
-
-    unit = size / 256.0
-
-    def sc(*values):
-        return [v * unit for v in values]
-
-    ox0, oy0, ox1, oy1, orr = sc(6, 6, 250, 250, 52)
-    bx0, by0, bx1, by1, brr = sc(40, 92, 216, 196, 12)
-    tx0, ty0, tx1, ty1, trr = sc(40, 66, 130, 100, 10)
-    r0, g0, b0 = top
-    r1, g1, b1 = bottom
-
-    for py in range(size):
-        y = py + 0.5
-        # 圆角矩形每行只有一段连续像素,先求出这段的起止,以天然保留透明边角
-        start = None
-        end = None
-        for px in range(size):
-            if in_rounded(px + 0.5, y, ox0, oy0, ox1, oy1, orr):
-                if start is None:
-                    start = px
-                end = px
-        if start is None:
-            continue
-
-        colors = []
-        t = py / max(1, size - 1)
-        base = (
-            round(r0 + (r1 - r0) * t),
-            round(g0 + (g1 - g0) * t),
-            round(b0 + (b1 - b0) * t),
-        )
-        for px in range(start, end + 1):
-            x = px + 0.5
-            if in_rounded(x, y, bx0, by0, bx1, by1, brr) or in_rounded(x, y, tx0, ty0, tx1, ty1, trr):
-                colors.append("#ffffff")
-            else:
-                colors.append(f"#{base[0]:02x}{base[1]:02x}{base[2]:02x}")
-        image.put("{" + " ".join(colors) + "}", to=(start, py))
-
-    return image
-
-
-# --------------------------------------------------------------------------- #
 # 小工具:可着色的扁平按钮
 # --------------------------------------------------------------------------- #
 class FlatButton(tk.Button):
@@ -315,8 +259,8 @@ class App(tk.Tk):
 
         查找顺序(相对项目根目录):
             assets/icon.ico → icon.ico → assets/icon.png → icon.png
-        都找不到时使用内置绘制的图标。想换成自己的图标,
-        直接把图标文件放到上述任一位置即可(推荐 .ico,多尺寸更清晰)。
+        都找不到时不设置图标(显示 tkinter 默认图标)。想换成自己的图标,
+            直接把图标文件放到上述任一位置即可(推荐 .ico,多尺寸更清晰)。
         """
         root_dir = resource_dir()
 
@@ -340,9 +284,6 @@ class App(tk.Tk):
                     return
                 except tk.TclError:
                     pass
-
-        self._icon_image = _fallback_icon(self)
-        self.iconphoto(True, self._icon_image)
 
     # ------------------------------------------------------------------ 样式
     def _init_style(self):

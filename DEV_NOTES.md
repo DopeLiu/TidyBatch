@@ -445,7 +445,7 @@ _init_metrics()              # SCALE = GetDpiForSystem() / 96
 查找顺序(相对项目根目录):
 
 ```
-assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  代码绘制的兜底图标
+assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  都找不到则不设置,显示 tkinter 默认图标
 ```
 
 **换图标:把文件放到上述任一位置即可,无需改代码。** 推荐 `.ico`
@@ -645,7 +645,7 @@ python tools/build_exe.py -k       # 保留 build 临时目录,便于排查打�
 | 陷阱 | 现象 | 解决 |
 |---|---|---|
 | **`__file__` 在打包后指向临时解包目录** | 用 `dirname(dirname(__file__))` 推导出的"项目根"实为 `sys._MEIPASS`;配置写进去后,单文件模式一退出就被清理,表现为"设置永远不保存" | 拆成 `resource_dir()`(只读资源,指向 `_MEIPASS`)与 `data_dir()`(可写数据,指向 `sys.executable` 所在目录),两者都在 `gui.py` 内根据 `sys.frozen` 判断 |
-| **图标需要显式打入** | 只加 `--icon` 仅有 exe 文件图标,界面运行时的 `iconbitmap` 仍找不到文件,会退回代码绘制的兜底图标 | `--add-data "assets/icon.ico;assets"`,`resource_dir()` 保证能定位到 |
+| **图标需要显式打入** | 只加 `--icon` 仅有 exe 文件图标,界面运行时的 `iconbitmap` 仍找不到文件,会显示 tkinter 默认图标 | `--add-data "assets/icon.ico;assets"`,`resource_dir()` 保证能定位到 |
 | **`--windowed` 后看不到报错** | 未加 `--windowed` 会弹控制台黑窗;加了之后启动异常时无任何输出,难以排查 | 排查时改用文件夹模式(`-d -k`)直接运行包内 exe,或临时去掉 `--windowed` |
 
 ---
