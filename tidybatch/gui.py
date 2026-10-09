@@ -28,6 +28,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from . import __version__
 from . import operations as _operations  # noqa: F401 —— 导入即触发全部 @register
 from .core import REGISTRY, Field, Operation, categories
 
@@ -226,7 +227,7 @@ class App(tk.Tk):
         _init_metrics()
 
         super().__init__()
-        self.title("TidyBatch · 批量文件工具箱")
+        self.title(f"TidyBatch_v{__version__}")
         # 窗口尺寸按屏幕与 DPI 自适应:小屏也能完整显示,大屏更宽松
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
@@ -385,7 +386,7 @@ class App(tk.Tk):
         tk.Label(header, text="TidyBatch · 批量文件工具箱", bg=C["bg"], fg=C["fg"], font=FONT_TITLE).pack(side="left")
         tk.Label(
             header,
-            text="  Version: v2.0.3  Auther: DopeLiu",
+            text=f"  Version: v{__version__}  Author: DopeLiu",
             bg=C["bg"],
             fg=C["muted"],
             font=FONT_SMALL,

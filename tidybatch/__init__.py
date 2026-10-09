@@ -13,5 +13,5 @@ gui.py         tkinter 图形界面(只负责展示与交互,不含任何文件�
 界面会自动出现对应入口与参数表单,无需修改 gui.py。
 """
 
-__version__ = "2.0.0"
+__version__ = "2.0.3"
 __all__ = ["core", "operations", "gui"]
