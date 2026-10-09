@@ -73,3 +73,13 @@ python tools/build_exe.py   # 产物：dist/FileControler.exe
 界面就会自动出现新入口，**不用改界面代码**。
 
 更深入的内容 —— 项目架构、界面实现细节、开发时踩过的坑 —— 见 [DEV_NOTES.md](DEV_NOTES.md)。
+
+## 许可证
+
+本项目以 [GNU AGPL-3.0](LICENSE) 协议开源：
+
+- 你可以自由地使用、修改和分发本工具；
+- 分发时（包括修改版）须以同样协议开放源码；
+- 不提供任何担保，完整条款见 [LICENSE](LICENSE)。
+
+Copyright (C) 2026 [DopeLiu](https://github.com/DopeLiu)
