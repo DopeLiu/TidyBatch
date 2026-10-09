@@ -316,9 +316,16 @@ def run(self, params, log, dry_run=True, should_stop=None, on_progress=None) -> 
 | 包含子目录 | check | 关 | |
 | 删除方式 | choice | 移入系统回收站(推荐) | 另一选项为「直接删除(不可恢复)」 |
 
-**默认的"回收站"模式**调用 Shell API `SHFileOperationW`(`FO_DELETE` + `FOF_ALLOWUNDO`,
-见 `core.send_to_recycle_bin()`),与在资源管理器中按 Delete 完全等效:文件进入系统回收站,
-可随时还原,不依赖任何第三方库。选择「直接删除」则调用 `os.remove`,不可恢复。
+**默认的"回收站"模式**按平台调用系统能力(实现见 `core.send_to_recycle_bin()`),
+均不依赖第三方库,文件可随时还原:
+
+| 平台 | 途径 |
+|---|---|
+| Windows | Shell API `SHFileOperationW`(`FO_DELETE` + `FOF_ALLOWUNDO`) |
+| macOS | Objective-C 运行时调用 `NSFileManager trashItemAtURL:`(等价废纸篓删除) |
+| Linux | 按 FreeDesktop 回收站规范内置实现(家目录卷 `$XDG_DATA_HOME/Trash`,其他卷 `.Trash/$uid`);异常时退回 `gio trash` / `trash-put` 命令 |
+
+选择「直接删除」则调用 `os.remove`,不可恢复。
 
 ### 5.3 压缩 / 解压类
 
@@ -663,7 +670,7 @@ python tests/selftest.py
 - 补充后缀 —— 预览阶段只读、执行结果正确、非纯数字文件不被误伤
 - 修改后缀 —— 只替换扩展名,不匹配的文件保持不变
 - 清理字符串 —— 递归遍历子目录生效
-- 按后缀删除 —— 文件确实被移入系统回收站(通过回收站计数前后对比校验)
+- 按后缀删除 —— 文件确实被移入系统回收站(可枚举回收站的平台对比计数前后变化,其余平台校验文件已离开原目录)
 - 批量压缩 —— 追加命名生成 `one.txt.zip`
 - 批量解压 —— 正确展开内容并删除原包
 - 异常输入 —— 非法目录、空后缀均抛出中文错误

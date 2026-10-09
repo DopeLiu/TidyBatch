@@ -250,7 +250,7 @@ class DeleteExtOp(Operation):
     category = "删除"
     description = (
         "删除目录中扩展名匹配的文件。\n"
-        "默认「移入系统回收站」:与在资源管理器中按 Delete 等效,可随时从回收站还原。\n"
+        "默认「移入系统回收站」:Windows / Linux 进回收站,macOS 进废纸篓,均可随时还原。\n"
         "选择「直接删除」则不可恢复,请务必先预览确认。"
     )
     destructive = True
@@ -262,9 +262,9 @@ class DeleteExtOp(Operation):
             "mode",
             "删除方式",
             "choice",
-            "移入系统回收站(目前仅支持 Windows)",
+            "移入系统回收站(推荐)",
             "可在回收站中随时还原",
-            ("移入系统回收站(目前仅支持 Windows)", "直接删除(不可恢复)"),
+            ("移入系统回收站(推荐)", "直接删除(不可恢复)"),
         ),
     )
 

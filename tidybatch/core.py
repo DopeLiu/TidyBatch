@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Callable, Dict, Iterable, List, Sequence
@@ -126,14 +128,30 @@ def require_dir(path: str) -> str:
     return path
 
 
+# --------------------------------------------------------------------------- #
+# 系统回收站(Windows / macOS / Linux 通用)
+# --------------------------------------------------------------------------- #
 def send_to_recycle_bin(path: str) -> None:
-    """把文件移入 Windows 系统回收站(与资源管理器里按 Delete 等效,可还原)。
+    """把文件移入系统回收站(Windows / macOS / Linux 通用,可随时还原)。
 
-    通过 Shell API SHFileOperationW 实现,不引入任何第三方依赖。
+    各平台的实现途径:
+        Windows   Shell API SHFileOperationW(与资源管理器里删除等效)
+        macOS     Objective-C 运行时调用 NSFileManager(与废纸篓删除等效)
+        Linux     按 FreeDesktop 回收站规范内置实现;异常时退回 gio / trash-put 命令
+
+    均为进程内调用或系统标准命令,不引入任何第三方 Python 依赖。
     失败时抛出异常,由 Operation.run() 按单条失败记录,不会中断整批任务。
     """
-    if sys.platform != "win32":
-        raise RuntimeError("移入系统回收站仅支持 Windows。")
+    if sys.platform == "win32":
+        _recycle_bin_windows(path)
+    elif sys.platform == "darwin":
+        _recycle_bin_macos(path)
+    else:
+        _recycle_bin_linux(path)
+
+
+def _recycle_bin_windows(path: str) -> None:
+    """Windows:SHFileOperationW + FOF_ALLOWUNDO 移入回收站。"""
     import ctypes
     from ctypes import wintypes
 
@@ -164,6 +182,182 @@ def send_to_recycle_bin(path: str) -> None:
         raise OSError("移入系统回收站被中止。")
     if os.path.exists(src):
         raise OSError(f"移入系统回收站失败(错误码 {result})。")
+
+
+def _recycle_bin_macos(path: str) -> None:
+    """macOS:经 Objective-C 运行时调用 NSFileManager 移入废纸篓。
+
+    等价于 Finder 的「移到废纸篓」,核心调用为:
+        [[NSFileManager defaultManager] trashItemAtURL:url resultingItemURL:nil error:&e]
+    objc_msgSend 是可变参数函数,因此按每种调用签名取独立入口。
+    """
+    import ctypes
+    from ctypes import CFUNCTYPE, POINTER, byref, c_byte, c_char_p, c_void_p
+    from ctypes.util import find_library
+
+    libobjc = ctypes.cdll.LoadLibrary(find_library("objc") or "/usr/lib/libobjc.A.dylib")
+    ctypes.cdll.LoadLibrary(
+        find_library("Foundation") or "/System/Library/Frameworks/Foundation.framework/Foundation"
+    )
+
+    libobjc.objc_getClass.restype = c_void_p
+    libobjc.objc_getClass.argtypes = [c_char_p]
+    libobjc.sel_registerName.restype = c_void_p
+    libobjc.sel_registerName.argtypes = [c_char_p]
+
+    address = ctypes.cast(libobjc.objc_msgSend, c_void_p).value
+    msg0 = CFUNCTYPE(c_void_p, c_void_p, c_void_p)(address)                   # () -> id
+    msg1 = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_void_p)(address)         # (id) -> id
+    msg_path = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_char_p)(address)     # (const char*) -> id
+    msg_chars = CFUNCTYPE(c_char_p, c_void_p, c_void_p)(address)              # () -> const char*
+    msg_void = CFUNCTYPE(None, c_void_p, c_void_p)(address)                   # () -> void
+    msg_trash = CFUNCTYPE(
+        c_byte, c_void_p, c_void_p, c_void_p, c_void_p, POINTER(c_void_p)
+    )(address)                                                                # (url, nil, NSError **) -> BOOL
+
+    def selector(name: str):
+        return libobjc.sel_registerName(name.encode("ascii"))
+
+    def cls(name: str):
+        return libobjc.objc_getClass(name.encode("ascii"))
+
+    src = os.path.abspath(path)
+    if not os.path.exists(src):
+        raise FileNotFoundError(src)
+
+    # 每次调用建立独立的自动释放池,避免批量删除时 NSString / NSURL 对象堆积
+    pool = msg0(cls("NSAutoreleasePool"), selector("alloc"))
+    pool = msg0(pool, selector("init"))
+    try:
+        ns_path = msg_path(cls("NSString"), selector("stringWithUTF8String:"), src.encode("utf-8"))
+        url = msg1(cls("NSURL"), selector("fileURLWithPath:"), ns_path)
+        error = c_void_p()
+        ok = msg_trash(
+            msg0(cls("NSFileManager"), selector("defaultManager")),
+            selector("trashItemAtURL:resultingItemURL:error:"),
+            url,
+            None,
+            byref(error),
+        )
+        if not ok:
+            reason = ""
+            if error.value:
+                description = msg0(error.value, selector("localizedDescription"))
+                text = msg_chars(description, selector("UTF8String")) if description else None
+                if text:
+                    reason = text.decode("utf-8", "replace")
+            raise OSError(f"移入废纸篓失败:{reason or src}")
+    finally:
+        msg_void(pool, selector("drain"))
+
+
+def _recycle_bin_linux(path: str) -> None:
+    """Linux / 其他类 Unix:移入系统回收站。
+
+    优先使用按 FreeDesktop 回收站规范的内置实现(零外部依赖);
+    卷挂载识别等边缘场景失败时,退回系统命令 gio / trash-put(如已安装)。
+    """
+    src = os.path.abspath(path)
+    if not os.path.exists(src):
+        raise FileNotFoundError(src)
+
+    native_error = None
+    try:
+        _linux_trash_native(src)
+        return
+    except OSError as exc:
+        native_error = exc
+
+    for command in (["gio", "trash", "--"], ["trash-put", "--"]):
+        exe = shutil.which(command[0])
+        if not exe:
+            continue
+        completed = subprocess.run([exe, *command[1:], src], capture_output=True)
+        if completed.returncode == 0:
+            return
+
+    raise native_error
+
+
+def _mount_point_of(path: str) -> str:
+    """向上查找 path 所在文件系统的挂载点;兜底返回根目录 "/"。"""
+    probe = os.path.realpath(path)
+    while not os.path.ismount(probe):
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    return probe
+
+
+def _linux_trash_native(src: str) -> None:
+    """按 FreeDesktop 回收站规范移入回收站(纯内置实现,含 .trashinfo 元数据)。
+
+    规范:家目录卷 → $XDG_DATA_HOME/Trash;
+    其他卷 → 挂载点下 .Trash/$uid(须为目录、非符号链接、带 sticky 位,优先)
+    或 .Trash-$uid。
+    """
+    from datetime import datetime
+    from urllib.parse import quote
+
+    home = os.path.expanduser("~")
+    if os.lstat(src).st_dev == os.lstat(home).st_dev:
+        data_home = os.environ.get("XDG_DATA_HOME", "")
+        if not (data_home and os.path.isabs(data_home)):
+            data_home = os.path.join(home, ".local", "share")
+        trash_root = os.path.join(data_home, "Trash")
+    else:
+        volume = _mount_point_of(src)
+        uid = os.getuid()
+        trash_root = ""
+        topdir = os.path.join(volume, ".Trash")
+        if (
+            os.path.isdir(topdir)
+            and not os.path.islink(topdir)
+            and os.lstat(topdir).st_mode & 0o1000
+        ):
+            candidate = os.path.join(topdir, str(uid))
+            try:
+                os.makedirs(candidate, mode=0o700, exist_ok=True)
+                trash_root = candidate
+            except OSError:
+                trash_root = ""
+        if not trash_root:
+            trash_root = os.path.join(volume, f".Trash-{uid}")
+
+    files_dir = os.path.join(trash_root, "files")
+    info_dir = os.path.join(trash_root, "info")
+    os.makedirs(files_dir, mode=0o700, exist_ok=True)
+    os.makedirs(info_dir, mode=0o700, exist_ok=True)
+
+    # 重名避让:「名字 1.ext」「名字 2.ext」…(沿用 send2trash 的做法)
+    name = os.path.basename(src)
+    base, ext = os.path.splitext(name)
+    dest_name = name
+    counter = 0
+    while (
+        os.path.exists(os.path.join(files_dir, dest_name))
+        or os.path.exists(os.path.join(info_dir, dest_name + ".trashinfo"))
+    ):
+        counter += 1
+        dest_name = f"{base} {counter}{ext}"
+
+    # 先写元数据再移动文件:中途失败则回滚,避免回收站出现"幽灵条目"
+    info_path = os.path.join(info_dir, dest_name + ".trashinfo")
+    with open(info_path, "w", encoding="utf-8") as handle:
+        handle.write(
+            "[Trash Info]\n"
+            f"Path={quote(src)}\n"
+            f"DeletionDate={datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}\n"
+        )
+    try:
+        os.rename(src, os.path.join(files_dir, dest_name))
+    except OSError:
+        try:
+            os.remove(info_path)
+        except OSError:
+            pass
+        raise
 
 
 # --------------------------------------------------------------------------- #
