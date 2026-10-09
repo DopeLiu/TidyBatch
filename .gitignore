@@ -4,7 +4,7 @@ __pycache__/
 
 # 打包与构建产物
 build/
-dist/
+dist/.tidybatch_settings.json
 *.egg-info/
 
 # 虚拟环境
