@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Callable, Dict, Iterable, List, Sequence
 
@@ -24,9 +25,6 @@ from typing import Callable, Dict, Iterable, List, Sequence
 # 日志回调:level 取值 "info" | "ok" | "warn" | "error"
 # --------------------------------------------------------------------------- #
 LogFn = Callable[[str, str], None]
-
-# 统一的回收站目录名(按后缀删除时默认移入此目录,可随时找回)
-TRASH_DIRNAME = ".tidybatch_trash"
 
 
 # --------------------------------------------------------------------------- #
@@ -126,6 +124,46 @@ def require_dir(path: str) -> str:
     if not os.path.isdir(path):
         raise ValueError(f"目录不存在:{path}")
     return path
+
+
+def send_to_recycle_bin(path: str) -> None:
+    """把文件移入 Windows 系统回收站(与资源管理器里按 Delete 等效,可还原)。
+
+    通过 Shell API SHFileOperationW 实现,不引入任何第三方依赖。
+    失败时抛出异常,由 Operation.run() 按单条失败记录,不会中断整批任务。
+    """
+    if sys.platform != "win32":
+        raise RuntimeError("移入系统回收站仅支持 Windows。")
+    import ctypes
+    from ctypes import wintypes
+
+    class SHFILEOPSTRUCTW(ctypes.Structure):
+        _fields_ = [
+            ("hwnd", wintypes.HWND),
+            ("wFunc", wintypes.UINT),
+            ("pFrom", wintypes.LPCWSTR),
+            ("pTo", wintypes.LPCWSTR),
+            ("fFlags", wintypes.WORD),
+            ("fAnyOperationsAborted", wintypes.BOOL),
+            ("hNameMappings", wintypes.LPVOID),
+            ("lpszProgressTitle", wintypes.LPCWSTR),
+        ]
+
+    src = os.path.abspath(path)
+    if not os.path.exists(src):
+        raise FileNotFoundError(src)
+
+    op = SHFILEOPSTRUCTW()
+    op.wFunc = 3                            # FO_DELETE
+    op.pFrom = src + "\0"                   # 路径须以两个 \0 结尾
+    op.fFlags = 0x40 | 0x10 | 0x400 | 0x4   # ALLOWUNDO|NOCONFIRMATION|NOERRORUI|SILENT
+    result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+    # 官方文档:非零返回值仅为调试参考,不可作为最终结论 —— 实测部分系统上
+    # 成功移入回收站也会返回 2。成败以「中止标志」和「文件是否已离开原位置」为准。
+    if op.fAnyOperationsAborted:
+        raise OSError("移入系统回收站被中止。")
+    if os.path.exists(src):
+        raise OSError(f"移入系统回收站失败(错误码 {result})。")
 
 
 # --------------------------------------------------------------------------- #

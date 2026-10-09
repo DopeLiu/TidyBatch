@@ -55,6 +55,31 @@ def make(path, data=b"x"):
         handle.write(data)
 
 
+def recycle_bin_count(sample_path):
+    """查询样本文件所在盘的回收站项目数;查询不可用时返回 None。"""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class SHQUERYRBINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD),
+                ("i64Size", ctypes.c_int64),
+                ("i64NumItems", ctypes.c_int64),
+            ]
+
+        info = SHQUERYRBINFO()
+        info.cbSize = ctypes.sizeof(SHQUERYRBINFO)
+        drive = os.path.splitdrive(os.path.abspath(sample_path))[0] + "\\"
+        if ctypes.windll.shell32.SHQueryRecycleBinW(drive, ctypes.byref(info)) != 0:
+            return None
+        return info.i64NumItems
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def test_core(root):
     print("\n[1] 核心逻辑")
 
@@ -88,17 +113,19 @@ def test_core(root):
     names = sorted(os.listdir(folder)) + sorted(os.listdir(os.path.join(folder, "sub")))
     check("清理文件名字符串 / 递归", "videoA.mp4" in names and "videoB.mkv" in names, str(names))
 
-    # 按后缀删除(回收站模式)
+    # 按后缀删除(移入系统回收站)
     folder = os.path.join(root, "delete")
     for name in ("keep.txt", "kill.7z", "kill2.7z"):
         make(os.path.join(folder, name))
+    before = recycle_bin_count(folder)
     REGISTRY["delete_ext"].run(
-        {"directory": folder, "ext": ".7z", "recursive": "", "mode": "移入回收站文件夹(推荐)"}, log, dry_run=False
+        {"directory": folder, "ext": ".7z", "recursive": "", "mode": "移入系统回收站(推荐)"}, log, dry_run=False
     )
-    trash = os.path.join(folder, ".tidybatch_trash")
+    after = recycle_bin_count(folder)
     check(
-        "按后缀删除 / 回收站模式",
-        sorted(os.listdir(folder)) == [".tidybatch_trash", "keep.txt"] and len(os.listdir(trash)) == 2,
+        "按后缀删除 / 移入系统回收站",
+        sorted(os.listdir(folder)) == ["keep.txt"] and before is not None and after == before + 2,
+        f"回收站计数 {before} → {after}",
     )
 
     # 批量压缩

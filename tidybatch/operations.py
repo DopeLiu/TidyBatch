@@ -31,7 +31,6 @@ import tarfile
 import zipfile
 
 from .core import (
-    TRASH_DIRNAME,
     Action,
     Field,
     Operation,
@@ -41,6 +40,7 @@ from .core import (
     parse_exts,
     register,
     require_dir,
+    send_to_recycle_bin,
     split_ext,
     unique_path,
 )
@@ -250,7 +250,7 @@ class DeleteExtOp(Operation):
     category = "删除"
     description = (
         "删除目录中扩展名匹配的文件。\n"
-        "默认「移入回收站文件夹」:文件被移动到同级 .tidybatch_trash 目录里,随时可手动找回。\n"
+        "默认「移入系统回收站」:与在资源管理器中按 Delete 等效,可随时从回收站还原。\n"
         "选择「直接删除」则不可恢复,请务必先预览确认。"
     )
     destructive = True
@@ -262,9 +262,9 @@ class DeleteExtOp(Operation):
             "mode",
             "删除方式",
             "choice",
-            "移入回收站文件夹(推荐)",
-            "推荐保留退路,可随时手动还原",
-            ("移入回收站文件夹(推荐)", "直接删除(不可恢复)"),
+            "移入系统回收站(目前仅支持 Windows)",
+            "可在回收站中随时还原",
+            ("移入系统回收站(目前仅支持 Windows)", "直接删除(不可恢复)"),
         ),
     )
 
@@ -282,10 +282,8 @@ class DeleteExtOp(Operation):
 
     def apply(self, action, params, log):
         if str(params.get("mode", "")).startswith("移入"):
-            trash = ensure_dir(os.path.join(os.path.dirname(action.src), TRASH_DIRNAME))
-            target = unique_path(os.path.join(trash, os.path.basename(action.src)))
-            shutil.move(action.src, target)
-            log("warn", f"已移入回收站:{os.path.basename(action.src)}")
+            send_to_recycle_bin(action.src)
+            log("warn", f"已移入系统回收站:{os.path.basename(action.src)}")
         else:
             os.remove(action.src)
             log("warn", f"已删除:{os.path.basename(action.src)}")
