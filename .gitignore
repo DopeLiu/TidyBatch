@@ -1,0 +1,18 @@
+# Python 编译产物
+__pycache__/
+*.py[cod]
+
+# 打包与构建产物
+build/
+dist/
+*.egg-info/
+
+# 虚拟环境
+.venv/
+
+# IDE / 工具
+.idea/
+.workbuddy/
+
+# 本地运行时配置
+.tidybatch_settings.json

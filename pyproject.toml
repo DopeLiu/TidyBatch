@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tidybatch"
+requires-python = ">=3.12"
+dependencies = [
+    "pyinstaller>=6.22.3",
+]
+# 版本号单一来源:tidybatch/__init__.py 的 __version__,此处动态读取
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["tidybatch"]
+
+[tool.setuptools.dynamic]
+version = {attr = "tidybatch.__version__"}
