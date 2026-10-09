@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FileControler 启动入口。
+"""TidyBatch 启动入口。
 
 用法:
     python app.py
@@ -12,7 +12,7 @@
 import os
 import sys
 
-# 让脚本在任意工作目录下都能 import 到 filecontrol 包
+# 让脚本在任意工作目录下都能 import 到 tidybatch 包
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
@@ -31,7 +31,7 @@ except ImportError:
     )
     sys.exit(1)
 
-from filecontrol.gui import main  # noqa: E402
+from tidybatch.gui import main  # noqa: E402
 
 if __name__ == "__main__":
     main()

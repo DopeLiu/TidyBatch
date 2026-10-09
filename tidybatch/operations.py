@@ -250,7 +250,7 @@ class DeleteExtOp(Operation):
     category = "删除"
     description = (
         "删除目录中扩展名匹配的文件。\n"
-        "默认「移入回收站文件夹」:文件被移动到同级 .filecontrol_trash 目录里,随时可手动找回。\n"
+        "默认「移入回收站文件夹」:文件被移动到同级 .tidybatch_trash 目录里,随时可手动找回。\n"
         "选择「直接删除」则不可恢复,请务必先预览确认。"
     )
     destructive = True

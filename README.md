@@ -1,4 +1,4 @@
-# FileControler 批量文件工具箱
+# TidyBatch 批量文件工具箱
 
 从网盘下载一大堆文件后，往往要做些机械又繁琐的整理。这个小工具就是干这个的：
 图形界面，点几下就能批量处理，**每一步都能先预览、再执行**，不会误删。
@@ -18,7 +18,7 @@
 
 ## 怎么运行
 
-[FileControler.exe](dist/FileControler.exe) 下载即可使用
+[TidyBatch.exe](dist/TidyBatch.exe) 下载即可使用
 
 下载源码运行：电脑上需要有 **Python 3.10 或更高版本**。
 
@@ -55,7 +55,7 @@ python tests/selftest.py    # 自测一下（不会动你的真实文件）
 
 ```bash
 pip install pyinstaller     # 只需装一次
-python tools/build_exe.py   # 产物：dist/FileControler.exe
+python tools/build_exe.py   # 产物：dist/TidyBatch.exe
 ```
 
 ## 安全说明
@@ -63,13 +63,13 @@ python tools/build_exe.py   # 产物：dist/FileControler.exe
 改文件是有风险的，所以本工具做了这些保护：
 
 - **先预览、后执行** —— 不确认就不会动文件。
-- **删除默认进回收站** —— 文件移到同级 `.filecontrol_trash` 文件夹，可手动还原。
+- **删除默认进回收站** —— 文件移到同级 `.tidybatch_trash` 文件夹，可手动还原。
 - **重名自动改名** —— 冲突时追加 `_1`、`_2`，绝不覆盖你已有的文件。
 - **危险操作二次确认** —— 删除类按钮会变红提醒。
 
 ## 想改代码 / 加功能？
 
-所有功能都写在 `filecontrol/operations.py` 里。照葫芦画瓢加一个类，
+所有功能都写在 `tidybatch/operations.py` 里。照葫芦画瓢加一个类，
 界面就会自动出现新入口，**不用改界面代码**。
 
 更深入的内容 —— 项目架构、界面实现细节、开发时踩过的坑 —— 见 [DEV_NOTES.md](DEV_NOTES.md)。

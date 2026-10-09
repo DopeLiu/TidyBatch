@@ -1,4 +1,4 @@
-# FileControler 开发笔记
+# TidyBatch 开发笔记
 
 > 本文档面向开发者与维护者，记录项目结构、设计取舍、界面实现细节、扩展方式与踩坑记录。
 > 面向使用者的操作说明见 [README.md](README.md)。
@@ -25,14 +25,14 @@
 ## 1. 目录结构
 
 ```
-FileControler/
+TidyBatch/
 ├── app.py                      启动入口(含 tkinter 缺失时的降级提示)
 ├── README.md                   使用说明(面向使用者)
 ├── DEV_NOTES.md                本文档(面向开发者)
 │
-├── filecontrol/                主包
+├── tidybatch/                主包
 │   ├── __init__.py             包说明与版本号
-│   ├── __main__.py             支持 python -m filecontrol
+│   ├── __main__.py             支持 python -m tidybatch
 │   ├── core.py                 核心层:抽象与工具(无 GUI 依赖)
 │   ├── operations.py           功能层:6 个具体功能的实现
 │   └── gui.py                  界面层:tkinter 窗口
@@ -62,7 +62,7 @@ FileControler/
 `core.py` + `operations.py` 不含任何 GUI 代码,因此可以被脚本、定时任务、测试直接复用 —— 例如:
 
 ```python
-from filecontrol.core import REGISTRY
+from tidybatch.core import REGISTRY
 
 REGISTRY["change_ext"].run(
     {"directory": r"D:\downloads", "old_ext": ".7zz", "new_ext": ".7z", "recursive": ""},
@@ -316,7 +316,7 @@ def run(self, params, log, dry_run=True, should_stop=None, on_progress=None) -> 
 | 包含子目录 | check | 关 | |
 | 删除方式 | choice | 移入回收站文件夹(推荐) | 另一选项为「直接删除(不可恢复)」 |
 
-**默认的"回收站"模式**并非调用系统回收站,而是把文件移动到同级的 `.filecontrol_trash`
+**默认的"回收站"模式**并非调用系统回收站,而是把文件移动到同级的 `.tidybatch_trash`
 目录中(重名时自动追加序号)。文件仍在原盘符下,可随时手动还原。选择「直接删除」则调用
 `os.remove`,不可恢复。
 
@@ -470,7 +470,7 @@ assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  都找
 
 ### 6.5 参数记忆
 
-程序会在项目根目录维护 `.filecontrol_settings.json`,记录:
+程序会在项目根目录维护 `.tidybatch_settings.json`,记录:
 
 - 每个功能上次填写的参数
 - 上次使用的功能(下次启动自动选中)
@@ -481,7 +481,7 @@ assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  都找
 
 ## 7. 扩展指南：新增一个功能
 
-**这是本文档最实用的部分。** 新增功能只需要在 `filecontrol/operations.py`
+**这是本文档最实用的部分。** 新增功能只需要在 `tidybatch/operations.py`
 末尾追加一个类,无需改动 `gui.py`。
 
 下面以一个实际可用的例子演示 —— 「按文件名关键词批量重命名」:
@@ -564,7 +564,7 @@ class RenameByPatternOp(Operation):
 |---|---|---|
 | **预览后执行** | `Operation.run()` | 所有变更先以只读方式列成清单供人工核对 |
 | **危险操作强化确认** | `gui.py` | `destructive=True` 的功能按钮变红,确认弹窗明确列出删除方式与数量 |
-| **删除可恢复** | `DeleteExtOp` | 默认移入 `.filecontrol_trash`,而非直接删除 |
+| **删除可恢复** | `DeleteExtOp` | 默认移入 `.tidybatch_trash`,而非直接删除 |
 | **禁止静默覆盖** | `core.unique_path()` | 目标重名时自动追加 `_1`/`_2`,绝不覆盖已有文件 |
 | **路径穿越防护** | `_safe_extract_zip()` | 拒绝解压含 `..` 或绝对路径的条目 |
 | **tar 安全过滤** | `_extract()` | 使用 Python 3.12+ 的 `filter="data"` |
@@ -617,15 +617,15 @@ class RenameByPatternOp(Operation):
 ```bash
 pip install pyinstaller            # 一次性准备(打包工具本身是第三方依赖,不影响程序运行)
 
-python tools/build_exe.py          # 单文件模式,产物 dist/FileControler.exe
+python tools/build_exe.py          # 单文件模式,产物 dist/TidyBatch.exe
 python tools/build_exe.py -d       # 文件夹模式(启动更快,少了自解压开销)
 python tools/build_exe.py -k       # 保留 build 临时目录,便于排查打包问题
 ```
 
 | 模式 | 产物 | 特点 |
 |---|---|---|
-| 单文件(默认) | `dist/FileControler.exe` | 约 11 MB,单文件易分发;启动需自解压,首启约 1–2 秒 |
-| 文件夹(`-d`) | `dist/FileControler/FileControler.exe` | 整体目录需一起拷贝,启动更快 |
+| 单文件(默认) | `dist/TidyBatch.exe` | 约 11 MB,单文件易分发;启动需自解压,首启约 1–2 秒 |
+| 文件夹(`-d`) | `dist/TidyBatch/TidyBatch.exe` | 整体目录需一起拷贝,启动更快 |
 
 脚本中三项参数值得注意:
 
@@ -633,7 +633,7 @@ python tools/build_exe.py -k       # 保留 build 临时目录,便于排查打�
 2. `--icon assets/icon.ico` + `--add-data` —— 图标既是 exe 的文件图标,也打入内部供界面启动时读取;
 3. `--exclude-module` —— 排除 numpy / pandas / PyQt 等未被使用的大体积库,防止体积膨胀。
 
-**配置文件的落点**:打包后 `.filecontrol_settings.json` 生成在 **exe 同级目录**(便携式)。
+**配置文件的落点**:打包后 `.tidybatch_settings.json` 生成在 **exe 同级目录**(便携式)。
 程序通过 `resource_dir()` / `data_dir()` 区分「只读资源」与「可写数据」,
 绝不会把配置写进 PyInstaller 的临时解包目录(否则单文件模式退出即丢失)。
 
@@ -663,7 +663,7 @@ python tests/selftest.py
 - 补充后缀 —— 预览阶段只读、执行结果正确、非纯数字文件不被误伤
 - 修改后缀 —— 只替换扩展名,不匹配的文件保持不变
 - 清理字符串 —— 递归遍历子目录生效
-- 按后缀删除 —— 回收站模式生效,文件确实被移入 `.filecontrol_trash`
+- 按后缀删除 —— 回收站模式生效,文件确实被移入 `.tidybatch_trash`
 - 批量压缩 —— 追加命名生成 `one.txt.zip`
 - 批量解压 —— 正确展开内容并删除原包
 - 异常输入 —— 非法目录、空后缀均抛出中文错误

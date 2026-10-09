@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FileControler 回归自测。
+"""TidyBatch 回归自测。
 
 用途
 ----
@@ -23,8 +23,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from filecontrol.core import REGISTRY  # noqa: E402
-from filecontrol import operations  # noqa: F401,E402
+from tidybatch.core import REGISTRY  # noqa: E402
+from tidybatch import operations  # noqa: F401,E402
 
 PASS, FAIL = [], []
 
@@ -95,10 +95,10 @@ def test_core(root):
     REGISTRY["delete_ext"].run(
         {"directory": folder, "ext": ".7z", "recursive": "", "mode": "移入回收站文件夹(推荐)"}, log, dry_run=False
     )
-    trash = os.path.join(folder, ".filecontrol_trash")
+    trash = os.path.join(folder, ".tidybatch_trash")
     check(
         "按后缀删除 / 回收站模式",
-        sorted(os.listdir(folder)) == [".filecontrol_trash", "keep.txt"] and len(os.listdir(trash)) == 2,
+        sorted(os.listdir(folder)) == [".tidybatch_trash", "keep.txt"] and len(os.listdir(trash)) == 2,
     )
 
     # 批量压缩
@@ -164,7 +164,7 @@ def test_gui(root):
     except ImportError:
         print("  跳过:当前 Python 不支持 tkinter")
         return
-    from filecontrol.gui import App
+    from tidybatch.gui import App
 
     app = App()
     app.deiconify()
@@ -197,8 +197,8 @@ def test_gui(root):
     )
 
     # 字体必须是整数像素单位(负值),否则字形无法对齐像素网格会发虚
-    from filecontrol.gui import FONT, FONT_MONO, FONT_SMALL
-    from filecontrol.gui import SCALE as _scale
+    from tidybatch.gui import FONT, FONT_MONO, FONT_SMALL
+    from tidybatch.gui import SCALE as _scale
 
     check("正文字体为整数像素单位", FONT[1] < 0 and float(FONT[1]).is_integer(), f"{FONT} scale={_scale}")
     check("提示字体为整数像素单位", FONT_SMALL[1] < 0)
@@ -241,7 +241,7 @@ def test_gui(root):
 
 
 def main():
-    root = tempfile.mkdtemp(prefix="filecontrol_selftest_")
+    root = tempfile.mkdtemp(prefix="tidybatch_selftest_")
     print(f"临时测试目录:{root}")
     try:
         test_core(root)

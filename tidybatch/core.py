@@ -26,7 +26,7 @@ from typing import Callable, Dict, Iterable, List, Sequence
 LogFn = Callable[[str, str], None]
 
 # 统一的回收站目录名(按后缀删除时默认移入此目录,可随时找回)
-TRASH_DIRNAME = ".filecontrol_trash"
+TRASH_DIRNAME = ".tidybatch_trash"
 
 
 # --------------------------------------------------------------------------- #

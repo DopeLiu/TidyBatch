@@ -154,7 +154,7 @@ def data_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-SETTINGS_PATH = os.path.join(data_dir(), ".filecontrol_settings.json")
+SETTINGS_PATH = os.path.join(data_dir(), ".tidybatch_settings.json")
 
 
 # --------------------------------------------------------------------------- #
@@ -226,7 +226,7 @@ class App(tk.Tk):
         _init_metrics()
 
         super().__init__()
-        self.title("FileControler · 批量文件工具箱")
+        self.title("TidyBatch · 批量文件工具箱")
         # 窗口尺寸按屏幕与 DPI 自适应:小屏也能完整显示,大屏更宽松
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
@@ -382,10 +382,10 @@ class App(tk.Tk):
         header = tk.Frame(self, bg=C["bg"])
         header.grid(row=0, column=0, sticky="ew", padx=S(12), pady=(S(12), S(8)))
 
-        tk.Label(header, text="批量文件工具箱", bg=C["bg"], fg=C["fg"], font=FONT_TITLE).pack(side="left")
+        tk.Label(header, text="TidyBatch · 批量文件工具箱", bg=C["bg"], fg=C["fg"], font=FONT_TITLE).pack(side="left")
         tk.Label(
             header,
-            text="  预览确认 · 后台执行 · 全程日志",
+            text="  Version: v2.0.3  Auther: DopeLiu",
             bg=C["bg"],
             fg=C["muted"],
             font=FONT_SMALL,
@@ -890,7 +890,7 @@ class App(tk.Tk):
             title="保存日志",
             defaultextension=".txt",
             filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
-            initialfile=f"filecontrol_{time.strftime('%Y%m%d_%H%M%S')}.txt",
+            initialfile=f"tidybatch_{time.strftime('%Y%m%d_%H%M%S')}.txt",
         )
         if not path:
             return

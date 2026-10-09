@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""把 FileControler 打包成独立的 Windows 可执行文件。
+"""把 TidyBatch 打包成独立的 Windows 可执行文件。
 
 产物:
-    默认   dist/FileControler.exe          单文件,双击即用,便于分发
-    加 -d  dist/FileControler/FileControler.exe   文件夹模式,启动更快
+    默认   dist/TidyBatch.exe          单文件,双击即用,便于分发
+    加 -d  dist/TidyBatch/TidyBatch.exe   文件夹模式,启动更快
 
 设计要点:
     * 通过 PyInstaller 的 Python API 调用,参数集中于此,避免命令行引号转义问题;
@@ -27,7 +27,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENTRY = os.path.join(ROOT, "app.py")
 ICON = os.path.join(ROOT, "assets", "icon.ico")
-APP_NAME = "FileControler"
+APP_NAME = "TidyBatch"
 
 # 可能被间接引入但本项目确实用不到的大体积库,排除以控制产物体积
 EXCLUDES = (
@@ -106,7 +106,7 @@ def build(onedir: bool = False, keep_work: bool = False) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="打包 FileControler 为可执行文件")
+    parser = argparse.ArgumentParser(description="打包 TidyBatch 为可执行文件")
     parser.add_argument("-d", "--onedir", action="store_true",
                         help="输出文件夹而非单文件(启动更快)")
     parser.add_argument("-k", "--keep-work", action="store_true",
@@ -120,7 +120,7 @@ def main() -> int:
         print("\n[打包成功] 产物:", exe)
         print(f"[打包成功] 体积: {size_mb:.1f} MB")
         if not opts.onedir:
-            print("[提示] 配置 .filecontrol_settings.json 会保存在 exe 同级目录")
+            print("[提示] 配置 .tidybatch_settings.json 会保存在 exe 同级目录")
         return 0
 
     sys.stderr.write("\n[打包失败] 未找到产物,请检查上方 PyInstaller 输出。\n")
