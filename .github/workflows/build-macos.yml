@@ -12,6 +12,7 @@ permissions:
 jobs:
   build-macos:
     runs-on: macos-latest
+    timeout-minutes: 30          # 兜底:任何步骤异常卡住时最多 30 分钟即失败,不会挂满默认时长
     env:
       PYTHON_PKG: https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
     steps:
@@ -43,6 +44,9 @@ jobs:
         run: codesign --verify --strict --verbose=2 dist/TidyBatch.app
 
       - name: 运行回归测试
+        timeout-minutes: 10         # 正常仅数十秒;超时即失败,避免异常挂起
+        env:
+          TIDYBATCH_SKIP_GUI: "1" # CI 无图形会话:跳过界面层,核心层(含回收站)照常验证
         run: .venv/bin/python tests/selftest.py
 
       - name: 生成 zip 与 dmg

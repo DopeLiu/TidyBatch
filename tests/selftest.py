@@ -13,7 +13,8 @@
 
 注意:
     测试全程在系统临时目录中进行,结束后自动清理,不会触碰你的真实文件。
-    界面测试需要当前 Python 支持 tkinter;不支持时会自动跳过界面部分。
+    界面测试需要当前 Python 支持 tkinter,且环境有图形会话;不支持 tkinter、
+    或设置了 TIDYBATCH_SKIP_GUI=1(无图形会话的 CI 环境)时会自动跳过界面部分。
 """
 import os
 import shutil
@@ -204,6 +205,9 @@ def test_core(root):
 
 def test_gui(root):
     print("\n[2] 图形界面")
+    if os.environ.get("TIDYBATCH_SKIP_GUI") == "1":
+        print("  跳过:已设置 TIDYBATCH_SKIP_GUI=1(无图形会话的环境)")
+        return
     try:
         import tkinter  # noqa: F401
     except ImportError:
