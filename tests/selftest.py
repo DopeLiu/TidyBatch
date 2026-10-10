@@ -83,7 +83,10 @@ def recycle_bin_count(sample_path):
                 return None
             return info.i64NumItems
         if sys.platform == "darwin":
-            return len(os.listdir(os.path.expanduser("~/.Trash")))
+            # 只统计用户可见项目:macOS 废纸篓里会存在隐藏元数据(如 .DS_Store,
+            # 用于"放回原处"),它不是被删除的文件,直接计数会比实际多 1。
+            entries = os.listdir(os.path.expanduser("~/.Trash"))
+            return len([name for name in entries if not name.startswith(".")])
         home = os.path.expanduser("~")
         if os.lstat(os.path.abspath(sample_path)).st_dev != os.lstat(home).st_dev:
             return None
