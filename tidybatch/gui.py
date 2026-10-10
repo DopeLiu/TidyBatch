@@ -147,10 +147,22 @@ def data_dir() -> str:
     """可写数据目录(配置、日志等)。
 
     - 源码运行:项目根目录;
-    - 打包运行:exe 所在目录 —— 绿色便携,配置随程序走,不会因单文件模式的
-      临时解包目录被清理而丢失。
+    - 打包运行(Windows):exe 所在目录 —— 绿色便携,配置随程序走,不会因
+      单文件模式的临时解包目录被清理而丢失;
+    - 打包运行(macOS):~/Library/Application Support/TidyBatch —— 不能写进
+      .app 包内部(未签名应用可能被系统从只读的随机路径启动,配置会丢失)。
     """
     if _is_frozen():
+        if sys.platform == "darwin":
+            path = os.path.join(
+                os.path.expanduser("~"),
+                "Library", "Application Support", "TidyBatch",
+            )
+            try:
+                os.makedirs(path, exist_ok=True)
+            except OSError:
+                return os.path.dirname(os.path.abspath(sys.executable))
+            return path
         return os.path.dirname(os.path.abspath(sys.executable))
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

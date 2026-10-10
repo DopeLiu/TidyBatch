@@ -1,0 +1,77 @@
+name: 构建 macOS 安装包
+
+on:
+  workflow_dispatch:        # 手动触发(仓库 Actions 页 → Run workflow)
+  push:
+    branches: [master]      # 推送到 master 自动构建,产物在 Actions 页下载
+    tags: ["v*"]            # 推送 v* 标签时,额外自动创建 Release 并附上 zip / dmg
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    env:
+      PYTHON_PKG: https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 universal2 版 Python 3.12(含 tkinter)
+        run: |
+          curl -fsSL -o /tmp/python.pkg "$PYTHON_PKG"
+          sudo installer -pkg /tmp/python.pkg -target /
+
+      - name: 准备打包环境
+        run: |
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/python3 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check "pyinstaller>=6.22.3"
+          .venv/bin/python -c "import sysconfig; print('平台:', sysconfig.get_platform())"
+
+      - name: 打包 .app
+        run: .venv/bin/python tools/build_exe.py
+
+      - name: 校验通用架构(Apple 芯片 + Intel)
+        run: |
+          ARCHS=$(lipo -archs dist/TidyBatch.app/Contents/MacOS/TidyBatch)
+          echo "产物架构: $ARCHS"
+          echo "$ARCHS" | grep -q x86_64
+          echo "$ARCHS" | grep -q arm64
+
+      - name: 校验 .app 签名完整性
+        run: codesign --verify --strict --verbose=2 dist/TidyBatch.app
+
+      - name: 运行回归测试
+        run: .venv/bin/python tests/selftest.py
+
+      - name: 生成 zip 与 dmg
+        run: |
+          set -euo pipefail
+          VERSION=$(.venv/bin/python -c "import sys; sys.path.insert(0, '.'); import tidybatch; print(tidybatch.__version__)")
+          echo "版本: $VERSION"
+          mkdir -p release/zipstage release/dmgstage
+          ditto dist/TidyBatch.app release/zipstage/TidyBatch.app
+          ditto dist/TidyBatch.app release/dmgstage/TidyBatch.app
+          cp "packaging/首次打开说明.txt" release/zipstage/
+          cp "packaging/首次打开说明.txt" release/dmgstage/
+          ln -s /Applications "release/dmgstage/应用程序"
+          ditto -c -k --sequesterRsrc release/zipstage "release/TidyBatch-${VERSION}-macOS.zip"
+          hdiutil create -volname "TidyBatch" -srcfolder release/dmgstage -ov -format UDZO "release/TidyBatch-${VERSION}-macOS.dmg"
+          ls -lh release
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: TidyBatch-macOS
+          path: |
+            release/*.zip
+            release/*.dmg
+
+      - name: 发布 Release(仅推送 v* 标签时)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release/*.zip release/*.dmg --generate-notes --verify-tag \
+            || gh release upload "${GITHUB_REF_NAME}" release/*.zip release/*.dmg --clobber

@@ -38,11 +38,18 @@ TidyBatch/
 │   └── gui.py                  界面层:tkinter 窗口
 │
 ├── assets/
-│   └── icon.ico                窗口图标(多尺寸 16/32/48/64/256)
+│   ├── icon.ico                图标(多尺寸 16/32/48/64/256)
+│   ├── icon.icns               macOS 程序图标(.app 包使用)
+│   └── icon.png                macOS 备用图标(窗口图标回退分支读取)
 │
 ├── tools/
-│   ├── make_icon.py            图标生成器
-│   └── build_exe.py            PyInstaller 打包脚本(一键生成 exe)
+│   └── build_exe.py            打包脚本(Windows exe / macOS .app)
+│
+├── packaging/
+│   └── 首次打开说明.txt        macOS 发行包内附的用户说明
+│
+├── .github/workflows/
+│   └── build-macos.yml         macOS 安装包自动构建流水线(云端)
 │
 ├── tests/
 │   └── selftest.py             回归自测
@@ -458,8 +465,8 @@ assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  都找
 **换图标:把文件放到上述任一位置即可,无需改代码。** 推荐 `.ico`
 (多尺寸内嵌,标题栏和任务栏都清晰);`.png` 也可以,但只提供一个尺寸。
 
-`assets/icon.ico` 由 `python tools/make_icon.py` 生成,内含 16/32/48/64/256 五种尺寸。
-生成器用解析式采样绘制(每像素 3~4 倍超采样),同样不依赖 Pillow 等第三方库。
+`assets/icon.ico` 内含 16/32/48/64/256 五种尺寸;macOS 用的 `icon.icns` / `icon.png`
+由其一次性转换而来,均为静态资源,不需要重新生成。
 
 ### 6.4 进度条
 
@@ -477,7 +484,8 @@ assets/icon.ico  →  icon.ico  →  assets/icon.png  →  icon.png  →  都找
 
 ### 6.5 参数记忆
 
-程序会在项目根目录维护 `.tidybatch_settings.json`,记录:
+程序会维护 `.tidybatch_settings.json`(源码运行:项目根目录;打包运行:Windows 为 exe 同级目录,
+macOS 为 `~/Library/Application Support/TidyBatch`,原因见 §9.4),记录:
 
 - 每个功能上次填写的参数
 - 上次使用的功能(下次启动自动选中)
@@ -619,30 +627,46 @@ class RenameByPatternOp(Operation):
 
 ### 9.4 打包(PyInstaller / frozen)相关
 
-打包脚本 `tools/build_exe.py` 已固化全部必要参数,常用命令:
+打包脚本 `tools/build_exe.py` 已固化全部必要参数,Windows 与 macOS 通用,常用命令:
 
 ```bash
 pip install pyinstaller            # 一次性准备(打包工具本身是第三方依赖,不影响程序运行)
 
-python tools/build_exe.py          # 单文件模式,产物 dist/TidyBatch.exe
-python tools/build_exe.py -d       # 文件夹模式(启动更快,少了自解压开销)
+python tools/build_exe.py          # Windows:单文件,产物 dist/TidyBatch.exe
+python tools/build_exe.py -d       # Windows:文件夹模式(启动更快,少了自解压开销)
 python tools/build_exe.py -k       # 保留 build 临时目录,便于排查打包问题
 ```
 
 | 模式 | 产物 | 特点 |
 |---|---|---|
-| 单文件(默认) | `dist/TidyBatch.exe` | 约 11 MB,单文件易分发;启动需自解压,首启约 1–2 秒 |
-| 文件夹(`-d`) | `dist/TidyBatch/TidyBatch.exe` | 整体目录需一起拷贝,启动更快 |
+| Windows 单文件(默认) | `dist/TidyBatch.exe` | 约 11 MB,单文件易分发;启动需自解压,首启约 1–2 秒 |
+| Windows 文件夹(`-d`) | `dist/TidyBatch/TidyBatch.exe` | 整体目录需一起拷贝,启动更快 |
+| macOS(固定文件夹模式) | `dist/TidyBatch.app` | 双击即用;用 universal2 解释器构建时自动产出"Apple 芯片 + Intel"通用版 |
 
 脚本中三项参数值得注意:
 
-1. `--windowed` —— GUI 程序,不弹控制台黑窗;
-2. `--icon assets/icon.ico` + `--add-data` —— 图标既是 exe 的文件图标,也打入内部供界面启动时读取;
+1. `--windowed` —— GUI 程序:Windows 下不弹控制台黑窗,macOS 下产出 `.app` 包;
+2. `--icon` + `--add-data` —— 图标既是程序文件图标(Windows 用 `.ico`,macOS 用 `.icns`),
+   也打入内部供界面启动时读取;
 3. `--exclude-module` —— 排除 numpy / pandas / PyQt 等未被使用的大体积库,防止体积膨胀。
 
-**配置文件的落点**:打包后 `.tidybatch_settings.json` 生成在 **exe 同级目录**(便携式)。
-程序通过 `resource_dir()` / `data_dir()` 区分「只读资源」与「可写数据」,
-绝不会把配置写进 PyInstaller 的临时解包目录(否则单文件模式退出即丢失)。
+**配置文件的落点**:打包后 `.tidybatch_settings.json` 生成在 **exe 同级目录**(便携式);
+macOS 例外 —— 写入 `~/Library/Application Support/TidyBatch`。原因是 `.app` 包内部不可写:
+未签名应用可能被系统从只读的随机路径启动(Gatekeeper 的转移运行机制),配置写进包内会
+表现为"设置永远保存不上"。程序通过 `resource_dir()` / `data_dir()` 区分「只读资源」与
+「可写数据」,绝不会把配置写进 PyInstaller 的临时解包目录(否则单文件模式退出即丢失)。
+
+**macOS 打包与分发**(要点):
+
+- 无法在 Windows 上交叉打包,Mac 版由 `.github/workflows/build-macos.yml` 在云端构建
+  (公开仓库的 macOS 构建机免费):装 python.org 的 universal2 解释器 → 打包 → 校验架构与签名
+  → 回归测试 → 生成 zip / dmg;
+- 产物为 `.zip`(ditto 压缩,保留符号链接与权限;**禁止用 Windows 工具二次压缩**,否则
+  用户端报"已损坏")与 `.dmg`(hdiutil,内含「应用程序」快捷方式),两者均附《首次打开说明》;
+- 未做付费签名与公证(无 Apple 开发者账号),用户首次打开需按说明在
+  「系统设置 → 隐私与安全性」点「仍要打开」(macOS 15 起,右键打开的绕过方式已被取消);
+- **签名后禁止再改动 `.app` 包内文件**,否则用户端提示"已损坏"且无法自行修复;
+- 打 `v*` 标签时流水线自动创建 Release 并附上 zip / dmg 两个安装包。
 
 打包需用**含 tkinter 的解释器**;新增资源文件时,必须同步在 `tools/build_exe.py` 里补 `--add-data`,
 否则打包后读不到。
@@ -707,7 +731,8 @@ python tests/selftest.py
 5. **操作撤销** —— 目前只有删除可恢复。可考虑把每次执行的 Action 清单落盘,支持整批回滚。
 6. **国际化** —— 目前界面文案全部硬编码中文,若需多语言可抽出文案表。
 
-> 打包为独立 EXE 的目标已实现,见 README 的「打包成 exe」一节与本节第 9.4 节。
+> 打包为独立程序的目标已实现(Windows `.exe` / macOS `.app`),见 README 的「打包」一节与
+> 本节第 9.4 节。
 
 ---
 
