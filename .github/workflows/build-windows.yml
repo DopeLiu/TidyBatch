@@ -13,6 +13,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 30          # 兜底:任何步骤异常卡住时最多 30 分钟即失败
+    env:
+      PYTHONIOENCODING: "utf-8" # Windows CI 控制台默认非 UTF-8,Python 打印中文日志会抛 UnicodeEncodeError
     steps:
       - name: 检出代码
         uses: actions/checkout@v7
