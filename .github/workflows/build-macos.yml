@@ -21,7 +21,7 @@ jobs:
 
       - name: 安装 universal2 版 Python 3.12(含 tkinter)
         run: |
-          curl -fsSL -o /tmp/python.pkg "$PYTHON_PKG"
+          curl -fsSL --retry 3 --retry-delay 3 --retry-all-errors -o /tmp/python.pkg "$PYTHON_PKG"  # 网络抖动时自动重试
           sudo installer -pkg /tmp/python.pkg -target /
 
       - name: 准备打包环境
