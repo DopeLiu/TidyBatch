@@ -40,18 +40,17 @@ python app.py               # 打开图形界面
 
 ## 打包（可选）
 
-想让没装 Python 的电脑也能用，可以把源码打包成独立程序。
+想让没装 Python 的电脑也能用，可以把源码打包成独立程序。正式版本的安装包由 GitHub Actions 云端自动构建，并发布到 [Releases](https://github.com/DopeLiu/TidyBatch/releases/latest)：
 
-**Windows**（在本机执行）：
+**Windows**：推送代码到 `master` 即自动构建（“构建 Windows 安装包”工作流），产出 `TidyBatch-x.y.z-Windows.exe`；本机也可以手动打包：
 
 ```bash
 python tools/build_exe.py   # 产物：dist/TidyBatch.exe
 ```
 
-**macOS**：Mac 版无法在 Windows 上交叉打包，因此由 GitHub Actions 云端自动构建（产物为 `.dmg` 与 `.zip`，内含同时支持 Apple 芯片与 Intel 的通用版本）：
+**macOS**：由“构建 macOS 安装包”工作流自动构建 `.dmg` 与 `.zip`（内含同时支持 Apple 芯片与 Intel 的通用版本）。
 
-- 推送代码到 `master` 即自动构建，可在 Actions 页下载产物；
-- 推送 `v*` 版本标签（如 `v2.1.1`）会自动创建 Release 并附上两个安装包。
+推送 `v*` 版本标签（如 `v2.1.2`）时，两个平台的安装包都会自动附加到同一个 Release。
 
 > 说明：Mac 版未购买苹果付费开发者认证，用户首次打开需按包内《首次打开说明》操作一次。
 

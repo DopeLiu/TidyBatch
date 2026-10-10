@@ -49,7 +49,8 @@ TidyBatch/
 │   └── 首次打开说明.txt        macOS 发行包内附的用户说明
 │
 ├── .github/workflows/
-│   └── build-macos.yml         macOS 安装包自动构建流水线(云端)
+│   ├── build-macos.yml         macOS 安装包自动构建流水线(云端)
+│   └── build-windows.yml       Windows 安装包自动构建流水线(云端)
 │
 ├── tests/
 │   └── selftest.py             回归自测
@@ -667,6 +668,9 @@ macOS 例外 —— 写入 `~/Library/Application Support/TidyBatch`。原因是
   「系统设置 → 隐私与安全性」点「仍要打开」(macOS 15 起,右键打开的绕过方式已被取消);
 - **签名后禁止再改动 `.app` 包内文件**,否则用户端提示"已损坏"且无法自行修复;
 - 打 `v*` 标签时流水线自动创建 Release 并附上 zip / dmg 两个安装包。
+
+**Windows 打包**:本机 `python tools/build_exe.py` 与云端 `.github/workflows/build-windows.yml`
+使用同一个脚本;打 `v*` 标签时,Windows exe 与 macOS 安装包会自动附加到同一个 Release。
 
 打包需用**含 tkinter 的解释器**;新增资源文件时,必须同步在 `tools/build_exe.py` 里补 `--add-data`,
 否则打包后读不到。

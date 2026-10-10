@@ -1,0 +1,62 @@
+name: 构建 Windows 安装包
+
+on:
+  workflow_dispatch:        # 手动触发(仓库 Actions 页 → Run workflow)
+  push:
+    branches: [master]      # 推送到 master 自动构建,产物在 Actions 页下载
+    tags: ["v*"]            # 推送 v* 标签时,额外自动创建 Release 并附上 exe
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30          # 兜底:任何步骤异常卡住时最多 30 分钟即失败
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 安装 Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: 准备打包环境
+        run: |
+          python -c "import tkinter; print('tkinter OK')"
+          python -m pip install --disable-pip-version-check "pyinstaller>=6.22.3"
+
+      - name: 打包 .exe
+        run: python tools/build_exe.py
+
+      - name: 运行回归测试
+        timeout-minutes: 10         # 正常仅数十秒;超时即失败,避免异常挂起
+        env:
+          TIDYBATCH_SKIP_GUI: "1" # CI 无桌面会话:跳过界面层,核心层照常验证
+        run: python tests/selftest.py
+
+      - name: 重命名产物(携带版本号)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(python -c "import sys; sys.path.insert(0, '.'); import tidybatch; print(tidybatch.__version__)")
+          echo "版本: $VERSION"
+          mkdir -p release
+          cp dist/TidyBatch.exe "release/TidyBatch-${VERSION}-Windows.exe"
+          ls -lh release
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: TidyBatch-Windows
+          path: release/*.exe
+
+      - name: 发布 Release(仅推送 v* 标签时)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release/*.exe --generate-notes --verify-tag \
+            || gh release upload "${GITHUB_REF_NAME}" release/*.exe --clobber
