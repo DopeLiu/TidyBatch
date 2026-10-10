@@ -16,9 +16,7 @@
 
 ## 怎么运行
 
-[TidyBatch.exe](dist/TidyBatch.exe)  <== 已打包好的 Windows 程序，下载即可使用
-
-macOS 版：在本仓库的 [Releases](https://github.com/DopeLiu/TidyBatch/releases/latest) 页面下载安装包（推荐 `.dmg`），首次打开请先看包内的《首次打开说明》。
+在本仓库的 [Releases](https://github.com/DopeLiu/TidyBatch/releases/latest) 页面下载对应系统的安装包，可直接运行，macOS 版首次打开请先看包内的《首次打开说明》。
 
 下载源码运行：电脑上需要有 **Python 3.10 或更高版本**（Windows / macOS / Linux 均可，系统需自带 tkinter）。
 
@@ -38,9 +36,9 @@ python app.py               # 打开图形界面
 **为什么要分开？** 因为「预览」只扫描、不改动，会把即将发生的每一处变化先列给你看。
 核对无误再执行，能有效避免手滑。执行在后台进行，随时可以「中止」。
 
-## 打包（可选）
+## 打包
 
-想让没装 Python 的电脑也能用，可以把源码打包成独立程序。正式版本的安装包由 GitHub Actions 云端自动构建，并发布到 [Releases](https://github.com/DopeLiu/TidyBatch/releases/latest)：
+正式版本的安装包由 GitHub Actions 云端自动构建，并发布到 [Releases](https://github.com/DopeLiu/TidyBatch/releases/latest)：
 
 **Windows**：推送代码到 `master` 即自动构建（“构建 Windows 安装包”工作流），产出 `TidyBatch-x.y.z-Windows.exe`；本机也可以手动打包：
 
@@ -49,8 +47,6 @@ python tools/build_exe.py   # 产物：dist/TidyBatch.exe
 ```
 
 **macOS**：由“构建 macOS 安装包”工作流自动构建 `.dmg` 与 `.zip`（内含同时支持 Apple 芯片与 Intel 的通用版本）。
-
-推送 `v*` 版本标签（如 `v2.1.2`）时，两个平台的安装包都会自动附加到同一个 Release。
 
 > 说明：Mac 版未购买苹果付费开发者认证，用户首次打开需按包内《首次打开说明》操作一次。
 
